@@ -26,7 +26,7 @@ class Player:
         self.vel = [0,0]
         self.grounded = True
         self.moving = False
-        self.facing = 0
+        self.facing = 1
         self.hitbox = pygame.Rect(pos[0],pos[1],hitbox[0],hitbox[1])
         self.curtile = [self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize]
         self.battery = 1200
@@ -65,11 +65,13 @@ class Player:
         self.vel[1] += 0.2
         if self.vel[1] > 10:
             self.vel[1] = 10
+
         if self.moving:
-            if self.vel[0] > -4 and self.vel[0] < 4:
-                self.vel[0] += self.facing*0.2
-            else:
-                self.vel[0] = 4*self.facing
+            self.vel[0] += self.facing*0.5
+            if self.facing == 1 and self.vel[0] > 4:
+                self.vel[0] = 4
+            if self.facing == -1 and self.vel[0] < -4:
+                self.vel[0] = -4
         else:
             if abs(self.vel[0]) > 0.4:
                 self.vel[0] -= 0.2*self.facing
@@ -98,9 +100,12 @@ class Player:
                 self.animtick = 0
             else:
                 self.animtick -= 1
+
         img = self.curanim[self.animtick]
+
         if self.facing == -1:
             img = pygame.transform.flip(img,1,0)
+
         win.blit(img,(self.hitbox.x-16,self.hitbox.y-8))
         pygame.draw.rect(win, (255,0,0), self.hitbox, 1)
         pygame.draw.rect(win, (240,0,240), (self.curtile[0]*tilesize,self.curtile[1]*tilesize,tilesize,tilesize),1)
@@ -197,17 +202,20 @@ def genratebattery():
      
 
 def gameplayrun(): 
+
     global cycle, gameplay
     cycle += 1
+
     for event in pygameevent:
-        if event.type == KEYDOWN:           
-                    
+
+        if event.type == KEYDOWN:
+
             if player.grounded and player.battery:
-                if event.key == K_LEFT:
+                if event.key == K_LEFT and not(player.moving):
                     player.facing = -1
                     player.moving = True
                     player.changeanim("starting","moving")
-                elif event.key == K_RIGHT:
+                elif event.key == K_RIGHT and not(player.moving):
                     player.facing = 1
                     player.moving = True
                     player.changeanim("starting","moving")
@@ -234,15 +242,22 @@ def gameplayrun():
 
 def worldeditrun():
 
-    for event in pygameevent:
+    mouse = pygame.mouse.get_pressed()
+    mpos = pygame.mouse.get_pos()
+    mtile = (mpos[0]//tilesize,mpos[1]//tilesize)
+    if mouse[0]:
+        world[mtile[1]][mtile[0]] = 1
+    elif mouse[2]:
+        world[mtile[1]][mtile[0]] = 0
+    # for event in pygameevent:
 
-        if event.type == MOUSEBUTTONDOWN:
-            mpos = event.pos
-            mtile = (mpos[0]//tilesize,mpos[1]//tilesize)
-            if event.button == 1:
-                world[mtile[1]][mtile[0]] = 1
-            elif event.button == 3:
-                world[mtile[1]][mtile[0]] = 0 
+    #     if event.type == MOUSEBUTTONDOWN:
+    #         mpos = event.pos
+    #         mtile = (mpos[0]//tilesize,mpos[1]//tilesize)
+    #         if event.button == 1:
+    #             world[mtile[1]][mtile[0]] = 1
+    #         elif event.button == 3:
+    #             world[mtile[1]][mtile[0]] = 0 
 
 def redraw():
     win.fill((30,30,30))
