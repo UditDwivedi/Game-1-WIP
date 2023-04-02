@@ -190,7 +190,7 @@ def optimize_level():
 
 curlevel = 1
 spawntile = (10,10)
-player = Player((0,0),(32,56))
+player = Player(spawntile,(32,56))
 player.hitbox.centerx = spawntile[0]*tilesize + tilesize//2
 player.hitbox.bottom = spawntile[1]*tilesize 
 gameplay = True
@@ -200,7 +200,6 @@ paused = False
 def genratebattery():
     temppos = [random.randrange(0,tiledim[0]),random.randrange(0,tiledim[1])]
      
-
 def gameplayrun(): 
 
     global cycle, gameplay
