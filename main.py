@@ -16,7 +16,10 @@ pygame.display.set_caption('Title')
 fullscreen = False
 
 with open("data\\levels\\level1.json",'r')as file1:
-    world =  json.load(file1)
+    filecontent =  json.load(file1)
+    world = filecontent[0]
+    start = filecontent[1]
+    end = filecontent[2]
 hitboxes = []
 tilesize = 20
 tiledim = (worlddim[0]//tilesize,worlddim[1]//tilesize)
@@ -79,6 +82,8 @@ class Player:
                 self.vel[0] = 0
 
         self.curtile = [self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize]
+        if self.curtile == end:
+            print("Win")
         
         move(self,hitboxes) 
         # if self.battery:
@@ -186,13 +191,17 @@ def optimize_level():
             hitboxes.append(pygame.Rect(i[0]*tilesize,j[0]*tilesize,i[1]*tilesize,len(j)*tilesize))
 
     with open("data\\levels\\level1.json",'w')as file1:
-        json.dump(world,file1)
+        filecontent = [world,start,end]
+        json.dump(filecontent,file1)
+    
+    player.curtile = start
+    player.hitbox.bottom = start[1]*tilesize
+    player.hitbox.centerx = start[0]*tilesize + tilesize//2
 
 curlevel = 1
-spawntile = (10,10)
-player = Player((0,0),(32,56))
-player.hitbox.centerx = spawntile[0]*tilesize + tilesize//2
-player.hitbox.bottom = spawntile[1]*tilesize 
+player = Player(start,(32,56))
+player.hitbox.centerx = start[0]*tilesize + tilesize//2
+player.hitbox.bottom = start[1]*tilesize 
 gameplay = True
 worldedit = False
 paused = False
@@ -200,7 +209,6 @@ paused = False
 def genratebattery():
     temppos = [random.randrange(0,tiledim[0]),random.randrange(0,tiledim[1])]
      
-
 def gameplayrun(): 
 
     global cycle, gameplay
@@ -242,22 +250,15 @@ def gameplayrun():
 
 def worldeditrun():
 
-    mouse = pygame.mouse.get_pressed()
-    mpos = pygame.mouse.get_pos()
-    mtile = (mpos[0]//tilesize,mpos[1]//tilesize)
+    global start,end
     if mouse[0]:
         world[mtile[1]][mtile[0]] = 1
+        if keys[K_1]:
+            start = mtile
+        elif keys[K_2]:
+            end = mtile
     elif mouse[2]:
         world[mtile[1]][mtile[0]] = 0
-    # for event in pygameevent:
-
-    #     if event.type == MOUSEBUTTONDOWN:
-    #         mpos = event.pos
-    #         mtile = (mpos[0]//tilesize,mpos[1]//tilesize)
-    #         if event.button == 1:
-    #             world[mtile[1]][mtile[0]] = 1
-    #         elif event.button == 3:
-    #             world[mtile[1]][mtile[0]] = 0 
 
 def redraw():
     win.fill((30,30,30))
@@ -291,6 +292,10 @@ while True:
     clock.tick(FPS)
      
     pygameevent = pygame.event.get()
+    mouse = pygame.mouse.get_pressed()
+    mpos = pygame.mouse.get_pos()
+    keys = pygame.key.get_pressed()
+    mtile = (mpos[0]//tilesize,mpos[1]//tilesize)
 
     for event in pygameevent:
         if event.type == QUIT:
