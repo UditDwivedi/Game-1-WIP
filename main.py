@@ -21,6 +21,7 @@ with open("data\\levels\\level1.json",'r')as file1:
     start = filecontent[1]
     end = filecontent[2]
 hitboxes = []
+dynamic_hitboxes = []
 tilesize = 20
 tiledim = (worlddim[0]//tilesize,worlddim[1]//tilesize)
 
@@ -63,6 +64,14 @@ class Player:
             self.grounded = True
         self.vel[1] = 0
 
+    def stop_moving(self):
+        if self.moving:
+            self.moving = False
+            if player.grounded:
+                self.changeanim("stopping","standing")
+            else:
+                self.changeanim("standing","standing")
+
     def resolve(self):
         
         self.vel[1] += 0.2
@@ -71,10 +80,10 @@ class Player:
 
         if self.moving:
             self.vel[0] += self.facing*0.5
-            if self.facing == 1 and self.vel[0] > 4:
-                self.vel[0] = 4
-            if self.facing == -1 and self.vel[0] < -4:
-                self.vel[0] = -4
+            if self.facing == 1 and self.vel[0] > 3:
+                self.vel[0] = 3
+            if self.facing == -1 and self.vel[0] < -3:
+                self.vel[0] = -3
         else:
             if abs(self.vel[0]) > 0.4:
                 self.vel[0] -= 0.2*self.facing
@@ -86,11 +95,6 @@ class Player:
             print("Win")
         
         move(self,hitboxes) 
-        # if self.battery:
-        #     player.battery -= 1            
-        # else:
-        #     self.changeanim("waiting","waiting")
-        #     self.moving = False
 
         if self.grounded and (self.vel[1] > 1 or self.vel[1] < -1):
             self.grounded = False
@@ -116,7 +120,24 @@ class Player:
         pygame.draw.rect(win, (240,0,240), (self.curtile[0]*tilesize,self.curtile[1]*tilesize,tilesize,tilesize),1)
         pygame.draw.rect(win, (15,240,0),(20,20,self.battery//12,20))
         pygame.draw.rect(win, (240,240,240), (20,20,100,20), 2)
-        
+
+class doors:
+
+    def __init__(self,rect,type,switch,sprite):
+        self.rect = rect
+        self.type = type
+        self.switch = switch
+        self.sprite = pygame.image.load("sprites/"+sprite+".png")
+        self.workingsprite = self.sprite.copy()
+
+curlevel = 1
+player = Player(start,(32,56))
+player.hitbox.centerx = start[0]*tilesize + tilesize//2
+player.hitbox.bottom = start[1]*tilesize 
+gameplay = True
+worldedit = False
+paused = False
+
 def move(entity, hitboxes):
     entity.hitbox.x += entity.vel[0]
     hits = []
@@ -128,13 +149,11 @@ def move(entity, hitboxes):
         
         if entity.vel[0] >= 0 and entity.hitbox.right > box.left:
             entity.hitbox.right = box.left
-            entity.vel[0] = 0
-            entity.moving = False
+            entity.stop_moving()
             continue
         elif entity.vel[0] < 0 and entity.hitbox.left < box.right:
             entity.hitbox.left = box.right
-            entity.vel[0] = 0
-            entity.moving = False
+            entity.stop_moving()
             continue
 
     entity.hitbox.y += entity.vel[1]
@@ -197,17 +216,6 @@ def optimize_level():
     player.curtile = start
     player.hitbox.bottom = start[1]*tilesize
     player.hitbox.centerx = start[0]*tilesize + tilesize//2
-
-curlevel = 1
-player = Player(start,(32,56))
-player.hitbox.centerx = start[0]*tilesize + tilesize//2
-player.hitbox.bottom = start[1]*tilesize 
-gameplay = True
-worldedit = False
-paused = False
-
-def genratebattery():
-    temppos = [random.randrange(0,tiledim[0]),random.randrange(0,tiledim[1])]
      
 def gameplayrun(): 
 
@@ -236,12 +244,8 @@ def gameplayrun():
         elif event.type == KEYUP:
             
             if event.key == K_LEFT or event.key == K_RIGHT:
-                if player.grounded and player.moving:
-                    player.changeanim("stopping","standing")
-                player.moving = False
-           
-    if len(batteries) < 4 and cycle%300:
-        genratebattery()
+                if player.moving:
+                    player.stop_moving()
 
     player.resolve()
     if world[player.curtile[1]][player.curtile[0]] == 3:
@@ -267,16 +271,16 @@ def redraw():
         for x in range(tiledim[0]):
             if world[y][x] == 1:
                 pygame.draw.rect(win,(0,0,240),(x*tilesize,y*tilesize,tilesize,tilesize))
-            elif world[y][x] == 2:
-                pygame.draw.rect(win,(240,240,0),(x*tilesize,y*tilesize,tilesize,tilesize))
-            elif world[y][x] == 3:
-                pygame.draw.rect(win,(0,240,0),(x*tilesize,y*tilesize,tilesize,tilesize))
-    for i in hitboxes:
-        pygame.draw.rect(win,(255,0,0),i,1)
+    pygame.draw.rect(win,(230,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize,tilesize))
+    pygame.draw.rect(win,(0,230,0),(end[0]*tilesize,end[1]*tilesize,tilesize,tilesize))
+
+
     if worldedit:
-        pass
+        pygame.draw.rect(win,(230,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize,tilesize))
     else:
         player.draw(win)
+        for i in hitboxes:
+            pygame.draw.rect(win,(255,0,0),i,1)
     if fullscreen:
         Win.blit(pygame.transform.scale(win,monitor),(0,0))
     else:
