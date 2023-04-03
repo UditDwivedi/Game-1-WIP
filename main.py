@@ -21,7 +21,7 @@ with open("data\\levels\\level1.json",'r')as file1:
     start = filecontent[1]
     end = filecontent[2]
 hitboxes = []
-dynamic_hitboxes = []
+dynamic_objects = []
 tilesize = 20
 tiledim = (worlddim[0]//tilesize,worlddim[1]//tilesize)
 
@@ -123,12 +123,24 @@ class Player:
 
 class doors:
 
-    def __init__(self,rect,type,switch,sprite):
-        self.rect = rect
+    def __init__(self,pos,type,sprite):
+        self.rect = pygame.Rect(pos[0]*tilesize,pos[1]*tilesize,tilesize,tilesize*4)
         self.type = type
-        self.switch = switch
+        self.on = True
         self.sprite = pygame.image.load("sprites/"+sprite+".png")
         self.workingsprite = self.sprite.copy()
+    
+    def switch(self):
+        if self.on:
+            if self.rect.height:
+                self.rect.height -= tilesize//5
+            else:
+                self.on = False
+        else:
+            if self.rect.height < tilesize*4:
+                self.rect.height += tilesize//4
+            else:
+                self.on = True
 
 curlevel = 1
 player = Player(start,(32,56))
