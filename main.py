@@ -20,6 +20,9 @@ with open("data\\levels\\level1.json",'r')as file1:
     world = filecontent[0]
     start = filecontent[1]
     end = filecontent[2]
+    door_raw = filecontent[3]
+    switch_raw = filecontent[4]
+
 hitboxes = []
 dynamic_objects = []
 tilesize = 20
@@ -121,19 +124,17 @@ class Player:
         pygame.draw.rect(win, (15,240,0),(20,20,self.battery//12,20))
         pygame.draw.rect(win, (240,240,240), (20,20,100,20), 2)
 
-class doors:
+class Door:
 
-    def __init__(self,pos,type,sprite):
+    def __init__(self,pos,on):
         self.rect = pygame.Rect(pos[0]*tilesize,pos[1]*tilesize,tilesize,tilesize*4)
         self.type = type
-        self.on = True
-        self.sprite = pygame.image.load("sprites/"+sprite+".png")
-        self.workingsprite = self.sprite.copy()
+        self.on = on
     
-    def switch(self):
+    def activate(self):
         if self.on:
             if self.rect.height:
-                self.rect.height -= tilesize//5
+                self.rect.height -= tilesize//4
             else:
                 self.on = False
         else:
@@ -142,6 +143,32 @@ class doors:
             else:
                 self.on = True
 
+    def draw(self,win):
+        if self.on:
+            pygame.draw.rect(win,(0,230,230),self.rect)
+
+class Switch:
+
+    def __init__(self,pos,on,connections):
+        self.rect = pygame.Rect(pos[0]*tilesize,pos[1]*tilesize,tilesize,tilesize)
+        self.on = on
+        self.connections = connections
+
+    def activate(self):
+        for i in self.connections:
+            doors[i].activate()
+
+    def draw(self,win):
+        pygame.draw.rect(win,(230,230,0),self.rect)
+
+doors = {}
+for i in door_raw:
+    doors[i[0]] = Door(i[0],i[1])
+
+switches = {}
+for i in switch_raw:
+    switches[i[0]] = Switch(i[0],i[1],i[2])
+
 curlevel = 1
 player = Player(start,(32,56))
 player.hitbox.centerx = start[0]*tilesize + tilesize//2
@@ -149,6 +176,7 @@ player.hitbox.bottom = start[1]*tilesize
 gameplay = True
 worldedit = False
 paused = False
+laying_tool = 0
 
 def move(entity, hitboxes):
     entity.hitbox.x += entity.vel[0]
@@ -222,7 +250,7 @@ def optimize_level():
             hitboxes.append(pygame.Rect(i[0]*tilesize,j[0]*tilesize,i[1]*tilesize,len(j)*tilesize))
 
     with open("data\\levels\\level1.json",'w')as file1:
-        filecontent = [world,start,end]
+        filecontent = [world,start,end,door_raw,switch_raw]
         json.dump(filecontent,file1)
     
     player.curtile = start
@@ -267,6 +295,7 @@ def gameplayrun():
 def worldeditrun():
 
     global start,end
+    
     if mouse[0]:
         world[mtile[1]][mtile[0]] = 1
         if keys[K_1]:
@@ -283,9 +312,8 @@ def redraw():
         for x in range(tiledim[0]):
             if world[y][x] == 1:
                 pygame.draw.rect(win,(0,0,240),(x*tilesize,y*tilesize,tilesize,tilesize))
-    pygame.draw.rect(win,(230,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize,tilesize))
-    pygame.draw.rect(win,(0,230,0),(end[0]*tilesize,end[1]*tilesize,tilesize,tilesize))
-
+    pygame.draw.rect(win,(0,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize,tilesize))
+    pygame.draw.rect(win,(230,0,0),(end[0]*tilesize,end[1]*tilesize,tilesize,tilesize))
 
     if worldedit:
         pygame.draw.rect(win,(230,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize,tilesize))
