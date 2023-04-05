@@ -20,8 +20,8 @@ with open("data\\levels\\level1.json",'r')as file1:
     world = filecontent[0]
     start = filecontent[1]
     end = filecontent[2]
-    door_raw = filecontent[3]
-    switch_raw = filecontent[4]
+    doors = filecontent[3]
+    switches = filecontent[4]
 
 hitboxes = []
 dynamic_objects = []
@@ -35,7 +35,7 @@ class Player:
         self.moving = False
         self.facing = 1
         self.hitbox = pygame.Rect(pos[0],pos[1],hitbox[0],hitbox[1])
-        self.curtile = [self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize]
+        self.curtile = (self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize)
         self.battery = 1200
 
         spritesheet = pygame.image.load("data\\sprites\\bot standing.png")
@@ -93,7 +93,7 @@ class Player:
             else:
                 self.vel[0] = 0
 
-        self.curtile = [self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize]
+        self.curtile = (self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize)
         if self.curtile == end:
             print("Win")
         
@@ -123,51 +123,6 @@ class Player:
         pygame.draw.rect(win, (240,0,240), (self.curtile[0]*tilesize,self.curtile[1]*tilesize,tilesize,tilesize),1)
         pygame.draw.rect(win, (15,240,0),(20,20,self.battery//12,20))
         pygame.draw.rect(win, (240,240,240), (20,20,100,20), 2)
-
-class Door:
-
-    def __init__(self,pos,on):
-        self.rect = pygame.Rect(pos[0]*tilesize,pos[1]*tilesize,tilesize,tilesize*4)
-        self.type = type
-        self.on = on
-    
-    def activate(self):
-        if self.on:
-            if self.rect.height:
-                self.rect.height -= tilesize//4
-            else:
-                self.on = False
-        else:
-            if self.rect.height < tilesize*4:
-                self.rect.height += tilesize//4
-            else:
-                self.on = True
-
-    def draw(self,win):
-        if self.on:
-            pygame.draw.rect(win,(0,230,230),self.rect)
-
-class Switch:
-
-    def __init__(self,pos,on,connections):
-        self.rect = pygame.Rect(pos[0]*tilesize,pos[1]*tilesize,tilesize,tilesize)
-        self.on = on
-        self.connections = connections
-
-    def activate(self):
-        for i in self.connections:
-            doors[i].activate()
-
-    def draw(self,win):
-        pygame.draw.rect(win,(230,230,0),self.rect)
-
-doors = {}
-for i in door_raw:
-    doors[i[0]] = Door(i[0],i[1])
-
-switches = {}
-for i in switch_raw:
-    switches[i[0]] = Switch(i[0],i[1],i[2])
 
 curlevel = 1
 player = Player(start,(32,56))
@@ -250,7 +205,7 @@ def optimize_level():
             hitboxes.append(pygame.Rect(i[0]*tilesize,j[0]*tilesize,i[1]*tilesize,len(j)*tilesize))
 
     with open("data\\levels\\level1.json",'w')as file1:
-        filecontent = [world,start,end,door_raw,switch_raw]
+        filecontent = [world,start,end,doors,switches]
         json.dump(filecontent,file1)
     
     player.curtile = start
@@ -278,7 +233,7 @@ def gameplayrun():
                 if event.key == K_UP:
                     player.changeanim("jumping","midair")
                     player.grounded = False
-                    player.vel[1] = -6  
+                    player.vel[1] = -6
                                  
 
         elif event.type == KEYUP:
@@ -288,9 +243,6 @@ def gameplayrun():
                     player.stop_moving()
 
     player.resolve()
-    if world[player.curtile[1]][player.curtile[0]] == 3:
-        gameplay = False
-        print("win")
 
 def worldeditrun():
 
