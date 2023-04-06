@@ -14,6 +14,7 @@ Win = pygame.display.set_mode(resolution)
 win = pygame.Surface(worlddim)
 pygame.display.set_caption('Title')
 fullscreen = False
+text1 = pygame.font.SysFont("Ariel",30,0,0)
 
 with open("data\\levels\\level1.json",'r')as file1:
     filecontent =  json.load(file1)
@@ -21,7 +22,7 @@ with open("data\\levels\\level1.json",'r')as file1:
     start = filecontent[1]
     end = filecontent[2]
     doors_raw = filecontent[3]
-    switches = filecontent[4]
+    switches_raw = filecontent[4]
 
 hitboxes = []
 dynamic_objects = []
@@ -31,7 +32,12 @@ tiledim = (worlddim[0]//tilesize,worlddim[1]//tilesize)
 doors = {}
 for door in doors_raw:
     x,y = door%tiledim[0],door//tiledim[0]
-    doors[(x,y)] = [True,pygame.Rect("")]
+    doors[door] = [True,pygame.Rect(x*tilesize,y*tilesize,tilesize,4*tilesize)]
+
+switches = {}
+for switch in switches_raw:
+    x,y = switch[0]%tiledim[0],switch[0]//tiledim[0]
+    switches[(x,y)] = switch[1]
 
 class Player:
     def __init__(self,pos,hitbox):
@@ -93,16 +99,18 @@ class Player:
             if self.facing == -1 and self.vel[0] < -3:
                 self.vel[0] = -3
         else:
-            if abs(self.vel[0]) > 0.4:
-                self.vel[0] -= 0.2*self.facing
+            if self.vel[0] > 0.2:
+                self.vel[0] -= 0.2
+            elif self.vel[0] < -0.2:
+                self.vel[0] += 0.2
             else:
                 self.vel[0] = 0
 
         self.curtile = (self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize)
-        if self.curtile == end:
+        if self.curtile == (end[0]+1,end[1]+3):
             print("Win")
         
-        move(self,hitboxes) 
+        move(self) 
 
         if self.grounded and (self.vel[1] > 1 or self.vel[1] < -1):
             self.grounded = False
@@ -126,8 +134,6 @@ class Player:
         win.blit(img,(self.hitbox.x-16,self.hitbox.y-8))
         pygame.draw.rect(win, (255,0,0), self.hitbox, 1)
         pygame.draw.rect(win, (240,0,240), (self.curtile[0]*tilesize,self.curtile[1]*tilesize,tilesize,tilesize),1)
-        pygame.draw.rect(win, (15,240,0),(20,20,self.battery//12,20))
-        pygame.draw.rect(win, (240,240,240), (20,20,100,20), 2)
 
 curlevel = 1
 player = Player(start,(32,56))
@@ -136,14 +142,18 @@ player.hitbox.bottom = start[1]*tilesize
 gameplay = True
 worldedit = False
 paused = False
-laying_tool = 0
+laying_tool = 1
+laying_color = [(0,0,230),(0,230,0),(230,0,0),(0,230,230),(230,230,0)]
 
-def move(entity, hitboxes):
+def move(entity):
     entity.hitbox.x += entity.vel[0]
     hits = []
     for box in hitboxes:
         if box.colliderect(entity.hitbox):
             hits.append(box)
+    for door in doors.values():
+        if door[0] and door[1].colliderect(entity.hitbox):
+            hits.append(door[1])
     
     for box in hits: 
         
@@ -161,6 +171,9 @@ def move(entity, hitboxes):
     for box in hitboxes:
         if box.colliderect(entity.hitbox):
             hits.append(box)
+    for door in doors.values():
+        if door[0] and door[1].colliderect(entity.hitbox):
+            hits.append(door[1])
     for box in hits:
         if entity.vel[1] >= 0 and entity.hitbox.bottom > box.top:
             entity.hitbox.bottom = box.top
@@ -170,6 +183,27 @@ def move(entity, hitboxes):
             entity.hitbox.top = box.bottom
             entity.vel[1] = 0
             continue
+    if entity.hitbox.left < 0:
+        entity.hitbox.left = 0
+        entity.stop_moving()
+    elif entity.hitbox.right > worlddim[0]:
+        entity.hitbox.right = worlddim[0]
+        entity.stop_moving()
+    if entity.hitbox.top < 0:
+        entity.hitbox.top = 0
+        entity.vel[1] = 0
+    elif entity.hitbox.bottom > worlddim[1]:
+        entity.hitbox.bottom = worlddim[1]
+        entity.ground()
+
+def saveworld():
+    doors_raw = list(doors.keys())
+    switches_raw = []
+    for switch in switches:
+        switches_raw.append([switch[0]+switch[1]*tiledim[0],switches[switch]])
+    filecontent = [world,start,end,doors_raw,switches_raw]
+    with open("data\levels\level1.json","w")as file1:
+        json.dump(filecontent,file1)
 
 def optimize_level():
     global world, hitboxes
@@ -208,14 +242,10 @@ def optimize_level():
     for i in temp2:
         for j in temp2[i]:
             hitboxes.append(pygame.Rect(i[0]*tilesize,j[0]*tilesize,i[1]*tilesize,len(j)*tilesize))
-
-    with open("data\\levels\\level1.json",'w')as file1:
-        filecontent = [world,start,end,doors,switches]
-        json.dump(filecontent,file1)
     
-    player.curtile = start
-    player.hitbox.bottom = start[1]*tilesize
-    player.hitbox.centerx = start[0]*tilesize + tilesize//2
+    player.curtile = (start[0]+1,start[1]+3)
+    player.hitbox.bottom = (start[1]+3)*tilesize
+    player.hitbox.centerx = (start[0]+1)*tilesize + tilesize//2
      
 def gameplayrun(): 
 
@@ -239,6 +269,10 @@ def gameplayrun():
                     player.changeanim("jumping","midair")
                     player.grounded = False
                     player.vel[1] = -6
+                if event.key == K_DOWN:
+                    if (player.curtile[0],player.curtile[1]-1) in switches:
+                        for door in switches[(player.curtile[0],player.curtile[1]-1)]:
+                            doors[door][0] = not doors[door][0]
                                  
 
         elif event.type == KEYUP:
@@ -247,37 +281,73 @@ def gameplayrun():
                 if player.moving:
                     player.stop_moving()
 
+    for door in doors:
+        d = doors[door]
+        if d[0]  and d[1].height < tilesize*4:
+            d[1].height += tilesize//4
+        elif not d[0] and d[1].height > 0:
+            d[1].height -= tilesize//4
+
     player.resolve()
 
-def worldeditrun():
+def worldeditrun(events):
 
-    global start,end
+    global start,end,laying_tool
+
+    if laying_tool == 1:
+        if mouse[0]:
+            world[mtile[1]][mtile[0]] = 1
+        elif mouse[2]:
+            world[mtile[1]][mtile[0]] = 0
     
-    if mouse[0]:
-        world[mtile[1]][mtile[0]] = 1
-        if keys[K_1]:
-            start = mtile
-        elif keys[K_2]:
-            end = mtile
-    elif mouse[2]:
-        world[mtile[1]][mtile[0]] = 0
+    for event in events:
+        if event.type == KEYDOWN:
+            if event.key == K_1:
+                laying_tool = 1
+            if event.key == K_2:
+                laying_tool = 2
+            if event.key == K_3:
+                laying_tool = 3
+            if event.key == K_4:
+                laying_tool = 4
+            if event.key == K_5:
+                laying_tool = 5
+            
+        if event.type == MOUSEBUTTONDOWN:
+            if laying_tool == 2:
+                start = mtile
+            elif laying_tool == 3:
+                end = mtile    
 
 def redraw():
     win.fill((30,30,30))
+
+    for door in doors:
+        pygame.draw.rect(win,(0,230,230),doors[door][1])
 
     for y in range(tiledim[1]):
         for x in range(tiledim[0]):
             if world[y][x] == 1:
                 pygame.draw.rect(win,(0,0,240),(x*tilesize,y*tilesize,tilesize,tilesize))
-    pygame.draw.rect(win,(0,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize,tilesize))
-    pygame.draw.rect(win,(230,0,0),(end[0]*tilesize,end[1]*tilesize,tilesize,tilesize))
+    pygame.draw.rect(win,(0,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize*3,tilesize*3),3)
+    pygame.draw.rect(win,(230,0,0),(end[0]*tilesize,end[1]*tilesize,tilesize*3,tilesize*3),3)
+
+    for switch in switches:
+        pygame.draw.rect(win,(230,230,0),(switch[0]*tilesize,switch[1]*tilesize,tilesize,tilesize))
 
     if worldedit:
-        pygame.draw.rect(win,(230,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize,tilesize))
+        mouse_rect = [mtile[0]*tilesize,mtile[1]*tilesize,tilesize,tilesize]
+        if laying_tool == 4:
+            mouse_rect[3] = tilesize*4
+        pygame.draw.rect(win,laying_color[laying_tool-1],mouse_rect,3)
     else:
         player.draw(win)
         for i in hitboxes:
             pygame.draw.rect(win,(255,0,0),i,1)
+    
+    win.blit(text1.render(str(player.vel[0]),0,(230,230,230)),(20,20))
+    win.blit(text1.render(str(player.facing),0,(230,230,230)),(20,40))
+    win.blit(text1.render(str(player.moving),0,(230,230,230)),(20,60))
     if fullscreen:
         Win.blit(pygame.transform.scale(win,monitor),(0,0))
     else:
@@ -310,6 +380,7 @@ while True:
             if event.key == K_LCTRL:
                 if worldedit:
                     optimize_level()
+                    saveworld()
                 worldedit = not worldedit
                 gameplay = not gameplay                
             
@@ -323,7 +394,7 @@ while True:
     if gameplay:
         gameplayrun()
     elif worldedit:
-        worldeditrun()
+        worldeditrun(pygameevent)
     elif paused:
         pass
     else:
