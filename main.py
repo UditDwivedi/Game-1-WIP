@@ -20,13 +20,18 @@ with open("data\\levels\\level1.json",'r')as file1:
     world = filecontent[0]
     start = filecontent[1]
     end = filecontent[2]
-    doors = filecontent[3]
+    doors_raw = filecontent[3]
     switches = filecontent[4]
 
 hitboxes = []
 dynamic_objects = []
 tilesize = 20
 tiledim = (worlddim[0]//tilesize,worlddim[1]//tilesize)
+
+doors = {}
+for door in doors_raw:
+    x,y = door%tiledim[0],door//tiledim[0]
+    doors[(x,y)] = [True,pygame.Rect("")]
 
 class Player:
     def __init__(self,pos,hitbox):
