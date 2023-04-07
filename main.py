@@ -143,7 +143,8 @@ gameplay = True
 worldedit = False
 paused = False
 laying_tool = 1
-laying_color = [(0,0,230),(0,230,0),(230,0,0),(0,230,230),(230,230,0)]
+laying_color = [(0,0,230),(0,230,0),(230,0,0),(0,230,230),(230,230,0),(230,230,230)]
+laying_action = None
 
 def move(entity):
     entity.hitbox.x += entity.vel[0]
@@ -292,7 +293,7 @@ def gameplayrun():
 
 def worldeditrun(events):
 
-    global start,end,laying_tool
+    global start,end,laying_tool,laying_action
 
     if laying_tool == 1:
         if mouse[0]:
@@ -304,21 +305,44 @@ def worldeditrun(events):
         if event.type == KEYDOWN:
             if event.key == K_1:
                 laying_tool = 1
-            if event.key == K_2:
+            elif event.key == K_2:
                 laying_tool = 2
-            if event.key == K_3:
+            elif event.key == K_3:
                 laying_tool = 3
-            if event.key == K_4:
+            elif event.key == K_4:
                 laying_tool = 4
-            if event.key == K_5:
+            elif event.key == K_5:
                 laying_tool = 5
+            elif event.key == K_6:
+                laying_tool = 6
             
         if event.type == MOUSEBUTTONDOWN:
-            if laying_tool == 2:
-                start = mtile
-            elif laying_tool == 3:
-                end = mtile    
-
+            if event.button == 1:
+                if laying_tool == 2:
+                    start = mtile
+                elif laying_tool == 3:
+                    end = mtile 
+                elif laying_tool == 4:
+                    tile_id = mtile[1]*tiledim[0] + mtile[0]
+                    if tile_id not in doors:
+                        doors[tile_id] = [True,pygame.Rect(mtile[0]*tilesize,mtile[1]*tilesize,tilesize,tilesize*4)]
+                elif laying_tool == 5:
+                    if mtile not in switches:
+                        switches[mtile] = []
+                elif laying_tool == 6:
+                    if laying_action == None:
+                        if mtile in switches:
+                            laying_action = mtile                
+            
+            elif event.button == 3:
+                if laying_tool == 4:
+                    tile_id = mtile[1]*tiledim[0] + mtile[0]
+                    if tile_id in doors:
+                        del doors[tile_id]
+                elif laying_tool == 5:
+                    if mtile in switches:
+                        del switches[mtile]
+               
 def redraw():
     win.fill((30,30,30))
 
@@ -339,7 +363,13 @@ def redraw():
         mouse_rect = [mtile[0]*tilesize,mtile[1]*tilesize,tilesize,tilesize]
         if laying_tool == 4:
             mouse_rect[3] = tilesize*4
-        pygame.draw.rect(win,laying_color[laying_tool-1],mouse_rect,3)
+        if laying_tool == 6:
+            pygame.draw.circle(win,laying_color[5],mpos,5)
+            if laying_action:
+                pygame.draw.line(win,laying_color[5],(laying_action[0]*tilesize+tilesize//2,laying_action[1]*tilesize+tilesize//2),mpos,3)
+                pygame.draw.rect(win,laying_color[5],(laying_action[0]*tilesize,laying_action[1]*tilesize,tilesize,tilesize))
+        else:
+            pygame.draw.rect(win,laying_color[laying_tool-1],mouse_rect,3)
     else:
         player.draw(win)
         for i in hitboxes:
