@@ -1,4 +1,4 @@
-import pygame,sys,random,math
+import pygame,sys,os
 import json
 from pygame.locals import *
 pygame.init()
@@ -14,30 +14,12 @@ Win = pygame.display.set_mode(resolution)
 win = pygame.Surface(worlddim)
 pygame.display.set_caption('Title')
 fullscreen = False
+
 text1 = pygame.font.SysFont("Ariel",30,0,0)
-
-with open("data\\levels\\level1.json",'r')as file1:
-    filecontent =  json.load(file1)
-    world = filecontent[0]
-    start = filecontent[1]
-    end = filecontent[2]
-    doors_raw = filecontent[3]
-    switches_raw = filecontent[4]
-
-hitboxes = []
-dynamic_objects = []
 tilesize = 20
 tiledim = (worlddim[0]//tilesize,worlddim[1]//tilesize)
-
-doors = {}
-for door in doors_raw:
-    x,y = door%tiledim[0],door//tiledim[0]
-    doors[door] = [True,pygame.Rect(x*tilesize,y*tilesize,tilesize,4*tilesize)]
-
-switches = {}
-for switch in switches_raw:
-    x,y = switch[0]%tiledim[0],switch[0]//tiledim[0]
-    switches[(x,y)] = switch[1]
+hitboxes = []
+dynamic_objects = []
 
 class Player:
     def __init__(self,pos,hitbox):
@@ -135,16 +117,35 @@ class Player:
         pygame.draw.rect(win, (255,0,0), self.hitbox, 1)
         pygame.draw.rect(win, (240,0,240), (self.curtile[0]*tilesize,self.curtile[1]*tilesize,tilesize,tilesize),1)
 
-curlevel = 1
-player = Player(start,(32,56))
-player.hitbox.centerx = start[0]*tilesize + tilesize//2
-player.hitbox.bottom = start[1]*tilesize 
-gameplay = True
-worldedit = False
-paused = False
+# Utility Functions
+
 laying_tool = 1
 laying_color = [(0,0,230),(0,230,0),(230,0,0),(0,230,230),(230,230,0),(230,230,230)]
 laying_action = None
+
+def openworld(path):
+    global start,world,end,doors,switches,player
+    with open(path,'r')as file1:
+        filecontent =  json.load(file1)
+        world = filecontent[0]
+        start = filecontent[1]
+        end = filecontent[2]
+        doors_raw = filecontent[3]
+        switches_raw = filecontent[4]
+
+    doors = {}
+    for door in doors_raw:
+        x,y = door%tiledim[0],door//tiledim[0]
+        doors[door] = [True,pygame.Rect(x*tilesize,y*tilesize,tilesize,4*tilesize)]
+
+    switches = {}
+    for switch in switches_raw:
+        x,y = switch[0]%tiledim[0],switch[0]//tiledim[0]
+        switches[(x,y)] = switch[1]
+
+    player = Player(start,(32,56))
+    player.hitbox.centerx = start[0]*tilesize + tilesize//2
+    player.hitbox.bottom = start[1]*tilesize
 
 def move(entity):
     entity.hitbox.x += entity.vel[0]
@@ -203,7 +204,7 @@ def saveworld():
     for switch in switches:
         switches_raw.append([switch[0]+switch[1]*tiledim[0],switches[switch]])
     filecontent = [world,start,end,doors_raw,switches_raw]
-    with open("data\levels\level1.json","w")as file1:
+    with open("data\levels\level2.json","w")as file1:
         json.dump(filecontent,file1)
 
 def optimize_level():
@@ -247,7 +248,22 @@ def optimize_level():
     player.curtile = (start[0]+1,start[1]+3)
     player.hitbox.bottom = (start[1]+3)*tilesize
     player.hitbox.centerx = (start[0]+1)*tilesize + tilesize//2
-     
+
+# Run Functions
+
+mainmenu = True
+gameplay = False
+worldedit = False
+paused = False
+levels = []
+
+def levelselect():
+    pass
+
+def mainmenurun(events):
+
+    pass
+
 def gameplayrun(): 
 
     global cycle, gameplay
@@ -377,6 +393,8 @@ def redraw():
 
     if worldedit:
         mouse_rect = [mtile[0]*tilesize,mtile[1]*tilesize,tilesize,tilesize]
+        if laying_tool == 2 or laying_tool == 3:
+            mouse_rect[2]=mouse_rect[3]=tilesize*3
         if laying_tool == 4:
             mouse_rect[3] = tilesize*4
         if laying_tool == 6:
@@ -391,9 +409,6 @@ def redraw():
         for i in hitboxes:
             pygame.draw.rect(win,(255,0,0),i,1)
     
-    win.blit(text1.render(str(player.vel[0]),0,(230,230,230)),(20,20))
-    win.blit(text1.render(str(player.facing),0,(230,230,230)),(20,40))
-    win.blit(text1.render(str(player.moving),0,(230,230,230)),(20,60))
     if fullscreen:
         Win.blit(pygame.transform.scale(win,monitor),(0,0))
     else:
@@ -403,7 +418,9 @@ def redraw():
 
 batteries = []
 
+openworld("data\levels\level1.json")
 optimize_level()
+
 while True:
 
     clock.tick(FPS)
@@ -437,7 +454,9 @@ while True:
                 else:
                     Win = pygame.display.set_mode(resolution)
 
-    if gameplay:
+    if mainmenu:
+        pass
+    elif gameplay:
         gameplayrun()
     elif worldedit:
         worldeditrun(pygameevent)
