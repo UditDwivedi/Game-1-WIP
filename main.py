@@ -273,7 +273,10 @@ def gameplayrun():
                 if event.key == K_DOWN:
                     if (player.curtile[0],player.curtile[1]-1) in switches:
                         for door in switches[(player.curtile[0],player.curtile[1]-1)]:
-                            doors[door][0] = not doors[door][0]
+                            if door in doors:
+                                doors[door][0] = not doors[door][0]
+                            else:
+                                switches[(player.curtile[0],player.curtile[1]-1)].remove(door)
                                  
 
         elif event.type == KEYUP:
@@ -315,15 +318,16 @@ def worldeditrun(events):
                 laying_tool = 5
             elif event.key == K_6:
                 laying_tool = 6
+                laying_action = None
             
         if event.type == MOUSEBUTTONDOWN:
             if event.button == 1:
+                tile_id = mtile[1]*tiledim[0] + mtile[0]
                 if laying_tool == 2:
                     start = mtile
                 elif laying_tool == 3:
                     end = mtile 
-                elif laying_tool == 4:
-                    tile_id = mtile[1]*tiledim[0] + mtile[0]
+                elif laying_tool == 4:                    
                     if tile_id not in doors:
                         doors[tile_id] = [True,pygame.Rect(mtile[0]*tilesize,mtile[1]*tilesize,tilesize,tilesize*4)]
                 elif laying_tool == 5:
@@ -332,7 +336,19 @@ def worldeditrun(events):
                 elif laying_tool == 6:
                     if laying_action == None:
                         if mtile in switches:
-                            laying_action = mtile                
+                            laying_action = mtile  
+                    else:
+                        for door in doors:
+                            if (tile_id in range(door,door+tiledim[0]*4,tiledim[0])):
+                                
+                                if door in switches[laying_action]:
+                                    switches[laying_action].remove(door)
+                                else:
+                                    switches[laying_action].append(door)
+                                
+                                break
+                        laying_action = None
+
             
             elif event.button == 3:
                 if laying_tool == 4:
