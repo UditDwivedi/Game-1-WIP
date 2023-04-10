@@ -16,8 +16,10 @@ pygame.display.set_caption('Title')
 fullscreen = False
 
 text1 = pygame.font.SysFont("Ariel",30,0,0)
+text2 = pygame.font.SysFont("Ariel",60,1,0)
 tilesize = 20
 tiledim = (worlddim[0]//tilesize,worlddim[1]//tilesize)
+COLOR = [(20,20,230),(20,230,20),(230,20,20),(20,230,230),(230,230,20),(230,230,230),(20,20,20)]
 hitboxes = []
 dynamic_objects = []
 
@@ -89,8 +91,6 @@ class Player:
                 self.vel[0] = 0
 
         self.curtile = (self.hitbox.centerx//tilesize,self.hitbox.bottom//tilesize)
-        if self.curtile == (end[0]+1,end[1]+3):
-            print("Win")
         
         move(self) 
 
@@ -120,7 +120,6 @@ class Player:
 # Utility Functions
 
 laying_tool = 1
-laying_color = [(0,0,230),(0,230,0),(230,0,0),(0,230,230),(230,230,0),(230,230,230)]
 laying_action = None
 
 def openworld(path):
@@ -207,6 +206,14 @@ def saveworld():
     with open("data\levels\level2.json","w")as file1:
         json.dump(filecontent,file1)
 
+def reset():
+    player.curtile = (start[0]+1,start[1]+3)
+    player.hitbox.bottom = (start[1]+3)*tilesize
+    player.hitbox.centerx = (start[0]+1)*tilesize + tilesize//2
+    player.stop_moving()
+    for door in doors:
+        doors[door][0] = True
+
 def optimize_level():
     global world, hitboxes
     temp = {}  
@@ -244,32 +251,97 @@ def optimize_level():
     for i in temp2:
         for j in temp2[i]:
             hitboxes.append(pygame.Rect(i[0]*tilesize,j[0]*tilesize,i[1]*tilesize,len(j)*tilesize))
-    
-    player.curtile = (start[0]+1,start[1]+3)
-    player.hitbox.bottom = (start[1]+3)*tilesize
-    player.hitbox.centerx = (start[0]+1)*tilesize + tilesize//2
+
+    reset()
 
 # Run Functions
-
-mainmenu = True
-gameplay = False
-worldedit = False
-paused = False
+runsegments = {
+    "mainmenu" : 1,
+    "levelselect" : 0,
+    "gameplay" : 0,
+    "worldedit" : 0,
+    "won":0,
+    "paused" : 0
+}
 levels = []
+    
 
-def levelselect():
-    pass
+def levelselectrun(events):
+    global curlevel
+    for event in events:
+        if event.type == KEYDOWN:
+            if event.key == K_UP:
+                curlevel -= 1
+            elif event.key == K_DOWN:
+                curlevel += 1
+            elif event.key == K_RETURN:
+                if runsegments["gameplay"]:
+                    openworld("data/levels/"+levels[curlevel])
+                    optimize_level()
+                    runsegments["levelselect"] = 0
+            if curlevel < 0:
+                curlevel = no_of_levels - 1
+            elif curlevel >= no_of_levels:
+                curlevel = 0
+
+    win.fill(COLOR[6])
+
+    for i in range(0,no_of_levels):
+        if i == curlevel:
+            text = text1.render(levels[i][:-5].upper(),0,COLOR[0])
+        else:
+            text = text1.render(levels[i][:-5].upper(),0,COLOR[5])
+        win.blit(text,(70,70+i*30))
+
+
+    if fullscreen:
+        Win.blit(pygame.transform.scale(win,monitor),(0,0))
+    else:
+        Win.blit(pygame.transform.scale(win,resolution),(0,0))
+    pygame.display.update()
 
 def mainmenurun(events):
 
-    pass
+    for event in events:
+        if event.type == KEYDOWN:
+            if event.key ==  K_1:
+                runsegments["gameplay"] = runsegments["levelselect"] = 1
+                runsegments["mainmenu"] = 0
+            elif event.key == K_2:
+                runsegments["worldedit"] = runsegments["levelselect"] = 1
+                runsegments["mainmenu"] = 0
+            elif event.key == K_3:
+                print("Coming Soon")
+            elif event.key == K_4:
+                print("Coming Soon")
+            elif event.key == K_5:
+                pygame.quit()
+                sys.exit()
+    
+    win.fill(COLOR[6])
 
-def gameplayrun(): 
+    texts = (
+        text2.render("1.PLAY",0,COLOR[5]),
+        text2.render("2.WORLD EDIT",0,COLOR[5]),
+        text2.render("3.SCORES",0,COLOR[5]),
+        text2.render("4.SETTINGS",0,COLOR[5]),
+        text2.render("5.QUIT",0,COLOR[5])
+    )
+    for i in range(0,5):
+        win.blit(texts[i],(200,200 + i*75))
 
-    global cycle, gameplay
+    if fullscreen:
+        Win.blit(pygame.transform.scale(win,monitor),(0,0))
+    else:
+        Win.blit(pygame.transform.scale(win,resolution),(0,0))
+    pygame.display.update()
+
+def gameplayrun(events): 
+
+    global cycle
     cycle += 1
 
-    for event in pygameevent:
+    for event in events:
 
         if event.type == KEYDOWN:
 
@@ -301,6 +373,10 @@ def gameplayrun():
                 if player.moving:
                     player.stop_moving()
 
+    if player.curtile == (end[0]+1,end[1]+3):
+        runsegments["won"] = 1
+        print("win")
+
     for door in doors:
         d = doors[door]
         if d[0]  and d[1].height < tilesize*4:
@@ -308,7 +384,31 @@ def gameplayrun():
         elif not d[0] and d[1].height > 0:
             d[1].height -= tilesize//4
 
+    win.fill((30,30,30))
+
+    for door in doors:
+        pygame.draw.rect(win,(0,230,230),doors[door][1])
+
+    for y in range(tiledim[1]):
+        for x in range(tiledim[0]):
+            if world[y][x] == 1:
+                pygame.draw.rect(win,(0,0,240),(x*tilesize,y*tilesize,tilesize,tilesize))
+    pygame.draw.rect(win,(0,230,0),(start[0]*tilesize,start[1]*tilesize,tilesize*3,tilesize*3),3)
+    pygame.draw.rect(win,(230,0,0),(end[0]*tilesize,end[1]*tilesize,tilesize*3,tilesize*3),3)
+
+    for switch in switches:
+        pygame.draw.rect(win,(230,230,0),(switch[0]*tilesize,switch[1]*tilesize,tilesize,tilesize))
+
     player.resolve()
+
+    player.draw(win)
+
+    if fullscreen:
+        Win.blit(pygame.transform.scale(win,monitor),(0,0))
+    else:
+        Win.blit(pygame.transform.scale(win,resolution),(0,0))
+
+    pygame.display.update()
 
 def worldeditrun(events):
 
@@ -374,7 +474,44 @@ def worldeditrun(events):
                 elif laying_tool == 5:
                     if mtile in switches:
                         del switches[mtile]
-               
+
+def wonrun(events):
+
+    for event in events:
+        
+        if event.type == KEYDOWN:
+            if event.key == K_1:
+                pass
+            elif event.key == K_2:
+                reset()
+                runsegments["won"] = 0
+            elif event.key == K_3:
+                runsegments["won"] = 0
+                runsegments["levelselect"] = 1
+            elif event.key == K_4:
+                runsegments["won"] = runsegments["gameplay"] = 0
+                runsegments["mainmenu"] = 1
+
+    texts = (
+        text2.render("1.NEXT",0,COLOR[5]),
+        text2.render("2.RESET",0,COLOR[5]),
+        text2.render("3.LEVELSELECT",0,COLOR[5]),
+        text2.render("4.MAINMENU",0,COLOR[5])
+    )
+
+    pygame.draw.rect(win,COLOR[5],(200,100,880,520))
+    pygame.draw.rect(win,COLOR[6],(210,110,860,500))
+
+    for i in range(0,4):
+        win.blit(texts[i],(230,130 + i*75))
+
+    if fullscreen:
+        Win.blit(pygame.transform.scale(win,monitor),(0,0))
+    else:
+        Win.blit(pygame.transform.scale(win,resolution),(0,0))
+
+    pygame.display.update()
+
 def redraw():
     win.fill((30,30,30))
 
@@ -391,23 +528,20 @@ def redraw():
     for switch in switches:
         pygame.draw.rect(win,(230,230,0),(switch[0]*tilesize,switch[1]*tilesize,tilesize,tilesize))
 
-    if worldedit:
+    if runsegments["worldedit"]:
         mouse_rect = [mtile[0]*tilesize,mtile[1]*tilesize,tilesize,tilesize]
         if laying_tool == 2 or laying_tool == 3:
             mouse_rect[2]=mouse_rect[3]=tilesize*3
         if laying_tool == 4:
             mouse_rect[3] = tilesize*4
         if laying_tool == 6:
-            pygame.draw.circle(win,laying_color[5],mpos,5)
+            pygame.draw.circle(win,COLOR[5],mpos,5)
             if laying_action:
-                pygame.draw.line(win,laying_color[5],(laying_action[0]*tilesize+tilesize//2,laying_action[1]*tilesize+tilesize//2),mpos,3)
-                pygame.draw.rect(win,laying_color[5],(laying_action[0]*tilesize,laying_action[1]*tilesize,tilesize,tilesize))
+                pygame.draw.line(win,COLOR[5],(laying_action[0]*tilesize+tilesize//2,laying_action[1]*tilesize+tilesize//2),mpos,3)
+                pygame.draw.rect(win,COLOR[5],(laying_action[0]*tilesize,laying_action[1]*tilesize,tilesize,tilesize))
         else:
-            pygame.draw.rect(win,laying_color[laying_tool-1],mouse_rect,3)
-    else:
-        player.draw(win)
-        for i in hitboxes:
-            pygame.draw.rect(win,(255,0,0),i,1)
+            pygame.draw.rect(win,COLOR[laying_tool-1],mouse_rect,3)
+        
     
     if fullscreen:
         Win.blit(pygame.transform.scale(win,monitor),(0,0))
@@ -416,10 +550,9 @@ def redraw():
 
     pygame.display.update()
 
-batteries = []
-
-openworld("data\levels\level1.json")
-optimize_level()
+levels = os.listdir("./data/levels")
+no_of_levels = len(levels)
+curlevel = 0
 
 while True:
 
@@ -434,18 +567,14 @@ while True:
     for event in pygameevent:
         if event.type == QUIT:
             pygame.quit()
-            sys.exit("__main__")
+            sys.exit()
         
         if event.type == KEYDOWN:
             if event.key == K_ESCAPE:
                 pygame.quit()
                 sys.exit("__main__")
             if event.key == K_LCTRL:
-                if worldedit:
-                    optimize_level()
-                    saveworld()
-                worldedit = not worldedit
-                gameplay = not gameplay                
+                pass               
             
             if event.key == K_f:
                 fullscreen = not fullscreen
@@ -454,16 +583,16 @@ while True:
                 else:
                     Win = pygame.display.set_mode(resolution)
 
-    if mainmenu:
-        pass
-    elif gameplay:
-        gameplayrun()
-    elif worldedit:
+    if runsegments["mainmenu"]:
+        mainmenurun(pygameevent)
+    elif runsegments["levelselect"]:
+        levelselectrun(pygameevent)
+    elif runsegments["gameplay"]:
+        if runsegments["won"]:
+            wonrun(pygameevent)
+        else:
+            gameplayrun(pygameevent)
+    elif runsegments["worldedit"]:
         worldeditrun(pygameevent)
-    elif paused:
-        pass
-    else:
-        pass
 
-    redraw()
     
