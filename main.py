@@ -69,6 +69,7 @@ class Player:
                 self.changeanim("stopping","standing")
             else:
                 self.changeanim("standing","standing")
+            self.vel[0] = 0
 
     def resolve(self):
         
